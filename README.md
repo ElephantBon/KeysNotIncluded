@@ -36,24 +36,15 @@ Open them with the mod's **Options** button in the main-menu **Mods** screen. Th
 
 ### Default tool filters
 
-| Option                              | Default      |
-|-------------------------------------|--------------|
-| Deconstruct                         | Buildings    |
-| Cancel                              | Game default |
-| Prioritize                          | Game default |
-| Apply every time a tool is picked   | Off          |
+| Option                              | Default   |
+|-------------------------------------|-----------|
+| Deconstruct                         | Buildings |
+| Apply every time a tool is picked   | Off       |
 
 The default is applied the first time you pick the tool after loading a save. If you then choose
 another filter yourself, it sticks for the rest of the session (unless *Apply every time* is on).
 In an overlay (Power, Plumbing, ...) the game picks the filter for that overlay; the mod leaves
 that alone and applies the default the next time you pick the tool outside the overlay.
-
-### Controls screen
-
-**Esc clears a key binding** (default: On). In Options → Controls, click a binding so it says
-"Press a key", then press Esc: the binding is set to None (unbound). Without this option, Esc only
-cancels. It works for every hotkey, the game's and other mods'. Press Esc again (with no binding
-waiting) to close the screen as usual.
 
 ### Build menu overlays
 
@@ -71,7 +62,7 @@ one can be turned off separately; all are on by default.
 | Shipping    | Shipping    |
 | Radiation   | Radiation (Spaced Out) |
 
-**Leave overlay when the build menu closes** (On) turns the overlay off again when you close the
+**Leave overlay when the build menu closes** (Off) turns the overlay off again when you close the
 build menu or open a category without an overlay. If you changed overlay yourself in the meantime,
 or picked a building that the game shows in its own overlay, yours is kept.
 
@@ -93,7 +84,7 @@ if it doesn't, right-click the solution → **Restore NuGet Packages**.
    If Documents is in OneDrive, change `ModFolder` as the comment says.
 2. Double-click **`KeysNotIncluded.sln`** in Visual Studio 2022.
 3. **Build → Rebuild Solution**. Debug or Release both work.
-4. The Output window ends with `KeysNotIncluded installed to ...\mods\Local\DEV_KeysNotIncluded`.
+4. The Output window ends with `KeysNotIncluded installed to ...\mods\Local\KeysNotIncluded`.
 5. Start the game, open **Mods**, enable **Keys Not Included**, restart.
 
 Build with the game closed (it locks the DLL while running).
@@ -110,11 +101,6 @@ instead of crashing if it can't find what it needs:
   invoking its widget's `onClick`, like a mouse click.
 - Deconstruct selected: `Deconstructable.OnDeconstruct` (the info panel button), falling back to
   `IsMarkedForDeconstruction` / `QueueDeconstruction` / `CancelDeconstruction`.
-- Esc clears a binding: Harmony prefixes on `InputBindingsScreen.OnKeyDown` / `Update` (only if the
-  screen declares them), field `waitingForKeyPress`, method `Bind(KKeyCode, Modifier)`,
-  `GameInputMapping.KeyBindings` / `SaveBindings()`, `Global.GetInputManager().RebindControls()`,
-  `BuildDisplay()`. The screen's own `Bind` is run with F15 (never conflicts), then that entry is set
-  to None; if the last step fails the action stays on F15, which behaves as unbound.
 - Build menu overlays: `PlanScreen.ActiveCategoryToggleInfo` (fallback field `activeCategoryInfo`),
   `ToggleInfo.userData`, `OverlayModes.<Mode>.ID`.
 
@@ -146,6 +132,5 @@ src/BackwallDeconstruct.cs  Shift+X: Deconstruct on the background layer
 src/DefaultFilters.cs       default filter per tool, applied after loading a save
 src/FilterMenu.cs           reads / selects filters in the tool filter menu
 src/FilterLayer.cs          the filter layers, as shown in Options
-src/ControlsScreenEsc.cs    Esc in Options > Controls clears the binding
 src/BuildMenuOverlay.cs     overlay per build menu category
 ```

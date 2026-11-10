@@ -59,6 +59,7 @@ namespace KeysNotIncluded
         public static HotkeyScreen Instance { get; private set; }
 
         private bool overlayFailed;
+        private bool defaultFiltersFailed;
 
         public static void Create()
         {
@@ -110,6 +111,16 @@ namespace KeysNotIncluded
 
         private void LateUpdate()
         {
+            if (!defaultFiltersFailed)
+            {
+                try { DefaultFilters.Poll(); }
+                catch (Exception ex)
+                {
+                    defaultFiltersFailed = true; // don't spam the log every frame
+                    Debug.LogWarning("[KeysNotIncluded] default filters disabled: " + ex);
+                }
+            }
+
             if (overlayFailed) return;
             try { BuildMenuOverlay.Poll(); }
             catch (Exception ex)

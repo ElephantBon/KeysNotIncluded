@@ -20,27 +20,11 @@ namespace KeysNotIncluded
         [JsonProperty]
         public FilterLayer DeconstructDefault { get; set; }
 
-        [Option("Cancel", "Filter the Cancel tool starts on after loading a save.", Filters)]
-        [JsonProperty]
-        public FilterLayer CancelDefault { get; set; }
-
-        [Option("Prioritize", "Filter the Prioritize tool starts on after loading a save.", Filters)]
-        [JsonProperty]
-        public FilterLayer PrioritizeDefault { get; set; }
-
         [Option("Apply every time a tool is picked",
             "Off: the default is applied the first time you pick the tool after loading a save, then your own choice sticks.\n" +
             "On: the tool goes back to its default every time you pick it.", Filters)]
         [JsonProperty]
         public bool ApplyEveryTime { get; set; }
-
-        // ------------------------------------------------------------------ controls screen
-
-        [Option("Esc clears a key binding",
-            "In Options > Controls, pressing Esc while a binding says \"Press a key\" sets it to None (unbound)\n" +
-            "instead of just cancelling. Works for every hotkey.", "Controls screen")]
-        [JsonProperty]
-        public bool EscClearsBinding { get; set; }
 
         // ------------------------------------------------------------------ build menu overlays
 
@@ -73,13 +57,9 @@ namespace KeysNotIncluded
         public KeysOptions()
         {
             DeconstructDefault = FilterLayer.Buildings;
-            CancelDefault = FilterLayer.GameDefault;
-            PrioritizeDefault = FilterLayer.GameDefault;
             ApplyEveryTime = false;
 
-            EscClearsBinding = true;
-
-            LeaveOverlayOnClose = true;
+            LeaveOverlayOnClose = false;
             OverlayOxygen = true;
             OverlayPower = true;
             OverlayPlumbing = true;
@@ -114,13 +94,9 @@ namespace KeysNotIncluded
         /// <summary>Configured default for a tool, by its class name (GameDefault if none).</summary>
         public FilterLayer DefaultFor(InterfaceTool tool)
         {
-            switch (tool != null ? tool.GetType().Name : "")
-            {
-                case "DeconstructTool": return DeconstructDefault;
-                case "CancelTool": return CancelDefault;
-                case "PrioritizeTool": return PrioritizeDefault;
-                default: return FilterLayer.GameDefault;
-            }
+            return tool != null && tool.GetType().Name == "DeconstructTool"
+                ? DeconstructDefault
+                : FilterLayer.GameDefault;
         }
 
         /// <summary>Whether opening this build menu category (game ID, see BuildMenuOverlay) enters its overlay.</summary>

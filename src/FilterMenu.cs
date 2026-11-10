@@ -69,11 +69,8 @@ namespace KeysNotIncluded
             var keys = new List<string>();
             var widgets = Widgets(Menu());
             if (widgets == null) return keys;
-            foreach (DictionaryEntry kv in widgets)
-            {
-                var go = kv.Value as GameObject;
-                if (kv.Key is string key && go != null) keys.Add(key);
-            }
+            foreach (var kv in widgets)
+                if (kv.Value != null) keys.Add(kv.Key);
             return keys;
         }
 
@@ -90,7 +87,7 @@ namespace KeysNotIncluded
         /// <summary>The game key for a layer in the current menu, or null if this tool has no such filter.</summary>
         public static string KeyFor(FilterLayer layer, List<string> keys)
         {
-            if (layer == FilterLayer.GameDefault || keys == null || keys.Count == 0) return null;
+            if (layer == FilterLayer.GameDefault) return null;
 
             var wanted = new List<string>();
             var layers = typeof(ToolParameterMenu).GetNestedType("FILTERLAYERS", BindingFlags.Public | BindingFlags.NonPublic);
@@ -103,6 +100,9 @@ namespace KeysNotIncluded
                 }
             }
             if (KeyGuesses.TryGetValue(layer, out var guesses)) wanted.AddRange(guesses);
+
+            if (keys == null || keys.Count == 0)
+                return wanted.Count > 0 ? wanted[0] : null;
 
             foreach (var w in wanted)
                 foreach (var k in keys)
@@ -126,7 +126,7 @@ namespace KeysNotIncluded
             if (menu == null || key == null) return false;
 
             var widgets = Widgets(menu);
-            if (widgets != null && widgets.Contains(key) && widgets[key] is GameObject go)
+            if (widgets != null && widgets.TryGetValue(key, out var go) && go != null)
             {
                 var toggle = go.GetComponentInChildren<MultiToggle>(true);
                 if (toggle != null && toggle.onClick != null)
@@ -158,27 +158,94 @@ namespace KeysNotIncluded
             return UnityEngine.Object.FindObjectOfType<ToolParameterMenu>();
         }
 
-        /// <summary>The menu's key -> widget GameObject map (field "widgets", or any field of that shape).</summary>
-        private static IDictionary Widgets(ToolParameterMenu menu)
+        /// <summary>
+        /// The menu's key -> widget GameObject map, in display order. The game's "widgets" field maps
+        /// each key either straight to a GameObject (older builds) or to a small wrapper object holding
+        /// one (newer builds: ToolParameterMenu.Widget { gameObject, data }).
+        /// </summary>
+        private static Dictionary<string, GameObject> Widgets(ToolParameterMenu menu)
         {
             if (menu == null) return null;
-            var named = AccessTools.Field(typeof(ToolParameterMenu), "widgets");
-            if (named != null && named.GetValue(menu) is IDictionary d) return d;
 
-            foreach (var f in typeof(ToolParameterMenu).GetFields(AnyInstance))
+            IDictionary raw = null;
+            var named = AccessTools.Field(typeof(ToolParameterMenu), "widgets");
+            if (named != null) raw = named.GetValue(menu) as IDictionary;
+            if (raw == null)
             {
-                var t = f.FieldType;
-                if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Dictionary<,>)
-                    && t.GetGenericArguments()[0] == typeof(string)
-                    && t.GetGenericArguments()[1] == typeof(GameObject))
-                    return f.GetValue(menu) as IDictionary;
+                foreach (var f in typeof(ToolParameterMenu).GetFields(AnyInstance))
+                {
+                    var t = f.FieldType;
+                    if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Dictionary<,>)
+                        && t.GetGenericArguments()[0] == typeof(string)
+                        && WidgetObject(t.GetGenericArguments()[1]) != null)
+                    {
+                        raw = f.GetValue(menu) as IDictionary;
+                        break;
+                    }
+                }
             }
-            if (!warnedNoWidgets)
+
+            if (raw == null)
             {
-                warnedNoWidgets = true;
-                Debug.LogWarning("[KeysNotIncluded] could not find the filter menu widgets; filter hotkeys disabled.");
+                if (!warnedNoWidgets)
+                {
+                    warnedNoWidgets = true;
+                    Debug.LogWarning("[KeysNotIncluded] could not find the filter menu widgets; filter hotkeys disabled.");
+                }
+                return null;
             }
-            return null;
+
+            var result = new Dictionary<string, GameObject>();
+            foreach (DictionaryEntry kv in raw)
+            {
+                if (!(kv.Key is string key) || kv.Value == null) continue;
+                var go = ToGameObject(kv.Value);
+                if (go != null) result[key] = go;
+            }
+            return result;
+        }
+
+        private static GameObject ToGameObject(object value)
+        {
+            if (value is GameObject go) return go;
+            if (value is Component c) return c != null ? c.gameObject : null;
+            var getter = WidgetObject(value.GetType());
+            return getter != null ? getter(value) : null;
+        }
+
+        private static readonly Dictionary<Type, Func<object, GameObject>> widgetGetters = new Dictionary<Type, Func<object, GameObject>>();
+
+        /// <summary>How to get the GameObject out of a widget value of this type, or null if it holds none.</summary>
+        private static Func<object, GameObject> WidgetObject(Type type)
+        {
+            if (widgetGetters.TryGetValue(type, out var cached)) return cached;
+            Func<object, GameObject> getter = null;
+            if (typeof(GameObject).IsAssignableFrom(type))
+                getter = v => v as GameObject;
+            else if (typeof(Component).IsAssignableFrom(type))
+                getter = v => (v as Component)?.gameObject;
+            else
+            {
+                foreach (var f in type.GetFields(AnyInstance))
+                {
+                    if (f.FieldType != typeof(GameObject)) continue;
+                    var field = f;
+                    getter = v => field.GetValue(v) as GameObject;
+                    break;
+                }
+                if (getter == null)
+                {
+                    foreach (var p in type.GetProperties(AnyInstance))
+                    {
+                        if (p.PropertyType != typeof(GameObject) || p.GetIndexParameters().Length != 0) continue;
+                        var prop = p;
+                        getter = v => prop.GetValue(v, null) as GameObject;
+                        break;
+                    }
+                }
+            }
+            widgetGetters[type] = getter;
+            return getter;
         }
 
         /// <summary>

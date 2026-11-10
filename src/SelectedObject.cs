@@ -17,6 +17,16 @@ namespace KeysNotIncluded
             return sel != null ? sel.gameObject : null;
         }
 
+        /// <summary>
+        /// Rebuilds the info panel's buttons so e.g. "Deconstruct" turns into "Cancel Deconstruct".
+        /// The button handlers in the game do the same after toggling.
+        /// </summary>
+        private static void RefreshStatusPanel(GameObject go)
+        {
+            if (go == null || Game.Instance == null || Game.Instance.userMenu == null) return;
+            Game.Instance.userMenu.Refresh(go);
+        }
+
         // ------------------------------------------------------------------ deconstruct
 
         private static Deconstructable SelectedDeconstructable()
@@ -49,6 +59,7 @@ namespace KeysNotIncluded
             if (onDeconstruct != null)
             {
                 onDeconstruct.Invoke(d, null);
+                RefreshStatusPanel(d.gameObject);
                 return true;
             }
 
@@ -59,12 +70,23 @@ namespace KeysNotIncluded
                 var cancel = AccessTools.Method(typeof(Deconstructable), "CancelDeconstruction", Type.EmptyTypes);
                 if (cancel == null) return false;
                 cancel.Invoke(d, null);
+                RefreshStatusPanel(d.gameObject);
                 return true;
             }
             var queueUser = AccessTools.Method(typeof(Deconstructable), "QueueDeconstruction", new[] { typeof(bool) });
-            if (queueUser != null) { queueUser.Invoke(d, new object[] { true }); return true; }
+            if (queueUser != null)
+            {
+                queueUser.Invoke(d, new object[] { true });
+                RefreshStatusPanel(d.gameObject);
+                return true;
+            }
             var queue = AccessTools.Method(typeof(Deconstructable), "QueueDeconstruction", Type.EmptyTypes);
-            if (queue != null) { queue.Invoke(d, null); return true; }
+            if (queue != null)
+            {
+                queue.Invoke(d, null);
+                RefreshStatusPanel(d.gameObject);
+                return true;
+            }
             return false;
         }
 
